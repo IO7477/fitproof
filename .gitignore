@@ -1,0 +1,34 @@
+# Dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# Next.js build output
+/.next/
+/out/
+/build/
+
+# Environment files
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# SQLite local database
+prisma/dev.db
+prisma/dev.db-journal
+dev.db
+dev.db-journal
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Playwright & Test Artifacts
+/test-results/
+/playwright-report/
+
+# OS Files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,144 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Laptop {
+  id                 String           @id @default(cuid())
+  manufacturer       String
+  modelFamily        String
+  modelCode          String           @unique
+  variantName        String
+  releaseYear        Int?
+  regionRevision     String?
+  configurationNotes String
+  knownSpecs         String           // JSON string of key-value verified specs
+  unknownSpecs       String           // JSON string of unknown specs
+  isSynthetic        Boolean          @default(true)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  upgradeTargets     UpgradeTarget[]
+  evidence           Evidence[]
+  testObservations   TestObservation[]
+}
+
+model UpgradeTarget {
+  id                       String           @id @default(cuid())
+  laptopId                 String
+  identifier               String           // e.g. "RAM Slot 1", "M.2 Slot 1 (Primary)"
+  slotType                 String           // "RAM" or "SSD"
+  formFactor               String           // "DDR4 SO-DIMM", "DDR5 SO-DIMM", "M.2 2280", etc.
+  supportedLengths         String?          // Comma-separated: "2230,2242,2280"
+  protocolSupported        String?          // "PCIe NVMe", "SATA III", "Dual-mode NVMe/SATA"
+  pcieGenLanes             String?          // "PCIe 4.0 x4", "PCIe 3.0 x4", etc.
+  ddrGeneration            String?          // "DDR4", "DDR5", "LPDDR5"
+  supportedSpeeds          String?          // "3200 MT/s", "4800 MT/s, 5600 MT/s"
+  currentOccupancy         String           // "OCCUPIED", "AVAILABLE", "UNKNOWN"
+  installedComponentSummary String?
+  isSoldered               Boolean          @default(false)
+  solderedCapacityGb       Int?
+  maxCapacityPerSlotGb     Int?
+  maxTotalSystemCapacityGb Int?
+  requiresReplacement      Boolean          @default(false)
+  clearanceNotes           String?
+  hardwareNotes            String?
+  bootSupported            Boolean          @default(true)
+  firmwareRestrictions     String?
+  unknownRequirements      String?          // JSON array of unknown requirements
+  createdAt                DateTime         @default(now())
+  updatedAt                DateTime         @updatedAt
+
+  laptop                   Laptop           @relation(fields: [laptopId], references: [id], onDelete: Cascade)
+  evidence                 Evidence[]
+  testObservations         TestObservation[]
+}
+
+model Part {
+  id                 String           @id @default(cuid())
+  category           String           // "RAM" or "SSD"
+  manufacturer       String
+  partNumber         String           @unique
+  name               String
+  formFactor         String           // "SO-DIMM", "M.2 2280", "M.2 2230", "2.5-inch SATA"
+  capacityGb         Int
+  ddrGen             String?          // "DDR4", "DDR5"
+  speedMt            Int?             // 3200, 4800, etc.
+  voltage            String?          // "1.2V", "1.1V"
+  pinCount           Int?
+  protocol           String?          // "PCIe NVMe", "SATA III"
+  pcieGen            String?          // "PCIe 4.0 x4", "PCIe 3.0 x4"
+  moduleLengthMm     Int?             // 80, 42, 30
+  isDoubleSided      Boolean          @default(false)
+  heatsinkIncluded   Boolean          @default(false)
+  notes              String?
+  isSynthetic        Boolean          @default(true)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  evidence           Evidence[]
+  testObservations   TestObservation[]
+}
+
+model Evidence {
+  id                     String           @id @default(cuid())
+  evidenceType           String           // "MANUFACTURER_SPEC", "SERVICE_MANUAL", "TEST_OBSERVATION", "COMMUNITY_BENCHMARK", "SELLER_LISTING"
+  sourceTitle            String
+  sourceUrl              String?
+  excerpt                String
+  exactClaim             String
+  applicableVariantId    String?
+  applicablePartId       String?
+  applicableTargetSlotId String?
+  submitterName          String
+  submitterRole          String           // "BUYER", "TECHNICIAN", "REVIEWER", "SYSTEM_SYNTHETIC"
+  reviewStatus           String           // "PENDING", "APPROVED", "REJECTED", "NEEDS_CLARIFICATION"
+  reviewRationale        String?
+  reviewedBy             String?
+  reviewedAt             DateTime?
+  isSynthetic            Boolean          @default(true)
+  isDisputed             Boolean          @default(false)
+  disputeNotes           String?
+  supersededById         String?
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+
+  laptop                 Laptop?          @relation(fields: [applicableVariantId], references: [id], onDelete: SetNull)
+  part                   Part?            @relation(fields: [applicablePartId], references: [id], onDelete: SetNull)
+  targetSlot             UpgradeTarget?   @relation(fields: [applicableTargetSlotId], references: [id], onDelete: SetNull)
+  testObservations       TestObservation[]
+}
+
+model TestObservation {
+  id                  String         @id @default(cuid())
+  laptopId            String
+  partId              String
+  targetSlotId        String?
+  biosVersion         String?
+  outcome             String         // "BOOT_STABLE", "BOOT_UNSTABLE", "NO_POST", "NOT_RECOGNIZED", "PHYSICAL_FIT_ISSUE"
+  testProcedure       String
+  observedLimitations String?
+  evidenceId          String?        @unique
+  createdAt           DateTime       @default(now())
+
+  laptop              Laptop         @relation(fields: [laptopId], references: [id], onDelete: Cascade)
+  part                Part           @relation(fields: [partId], references: [id], onDelete: Cascade)
+  targetSlot          UpgradeTarget? @relation(fields: [targetSlotId], references: [id], onDelete: SetNull)
+  evidence            Evidence?      @relation(fields: [evidenceId], references: [id], onDelete: SetNull)
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  action     String   // e.g. "APPROVE_EVIDENCE", "SUBMIT_TEST", "REJECT_EVIDENCE"
+  entityType String   // "Evidence", "Laptop", "Part"
+  entityId   String
+  actorName  String
+  actorRole  String
+  details    String
+  createdAt  DateTime @default(now())
+}
+
