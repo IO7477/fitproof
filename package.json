@@ -5,7 +5,8 @@
   "description": "FitProof: Evidence-Backed Laptop RAM & SSD Compatibility Checker",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "postinstall": "prisma generate",
+    "build": "prisma db push && tsx prisma/seed.ts && next build",
     "start": "next start",
     "lint": "next lint",
     "prisma:generate": "prisma generate",
